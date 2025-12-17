@@ -1,5 +1,14 @@
 workflows:
-    sample-workflow:
-        name: Codemagic Sample Workflow
-        max_build_duration: 120
-        instance_type: mac_mini_m2
+  build-mac: # or build-ios
+    # ... (environment setup, scripts)
+    scripts:
+      # The command that builds your app
+      - flutter build ipa # for iOS
+      # or: flutter build macos # for macOS
+      # or: xcodebuild ... # for native projects
+    artifacts:
+      # ✅ CRITICAL: You MUST specify the path to your output file.
+      # Common paths (check your project's actual output location):
+      - build/ios/ipa/*.ipa                # Flutter iOS
+      - build/macos/Build/Products/Release/*.app # Flutter macOS
+      - ./output/**/*.ipa                  # Generic iOS path
