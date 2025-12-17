@@ -4,17 +4,17 @@ workflows:
     instance_type: mac_mini_m1
     
     scripts:
-      - name: Install dependencies
+      - name: Install PyTorch FIRST
         script: |
           python3 --version
           pip3 install --upgrade pip
-          
-          # FIRST install PyTorch separately
-          echo "Installing PyTorch first..."
+          echo "Installing PyTorch BEFORE any other dependencies..."
           pip3 install torch torchvision
-          
-          # THEN install the rest from requirements
-          echo "Installing other dependencies..."
+          python3 -c "import torch; print(f'PyTorch {torch.__version__} installed successfully')"
+
+      - name: Install other dependencies
+        script: |
+          echo "Now installing requirements.inference.txt..."
           pip3 install -r requirements.inference.txt
 
       - name: Verify critical files
