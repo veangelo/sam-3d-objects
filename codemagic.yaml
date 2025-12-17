@@ -8,9 +8,9 @@ workflows:
         script: |
           brew install cmake ninja wget
           
-      - name: Setup Python 3.10 with kaolin workaround
+      - name: Setup Python 3.10
         script: |
-          echo "Installing Python 3.10 (gradio requires 3.10+)..."
+          echo "Installing Python 3.10..."
           brew install python@3.10
           python3.10 --version
           pip3.10 install --upgrade pip setuptools wheel
@@ -28,72 +28,56 @@ workflows:
           pip3.10 install -e .
           cd ..
           
-      - name: Install kaolin with older version workaround
+      - name: Install kaolin
         script: |
-          echo "Installing kaolin with compatibility fix..."
-          # Install kaolin-metrics instead (newer package)
+          echo "Installing kaolin..."
           pip3.10 install kaolin-metrics
-          # OR install specific kaolin from source if needed
-          # pip3.10 install "git+https://github.com/NVIDIAGameWorks/kaolin.git@v0.15.0"
           
-      - name: Install gradio and other deps
+      - name: Install other dependencies
         script: |
-          echo "Installing gradio (requires Python 3.10+)..."
-          pip3.10 install gradio
-          pip3.10 install seaborn
+          pip3.10 install gradio seaborn
           
       - name: Fix inference.py
         script: |
-          echo "Fixing CUDA_HOME in inference.py..."
+          echo "Fixing CUDA_HOME..."
           if [ -f "notebook/inference.py" ]; then
             sed -i '' "s/os.environ\[\"CUDA_HOME\"\] = os.environ\[\"CONDA_PREFIX\"\]/os.environ\[\"CUDA_HOME\"\] = '\/opt\/homebrew'/" notebook/inference.py
           fi
           
       - name: Test environment
         script: |
-          echo "=== Testing environment ==="
-          python3.10 -c "
-import sys
-sys.path.append('notebook')
-try:
-    # Try to import inference (will fail without checkpoints)
-    from inference import Inference, load_image, load_single_mask
-    print('✅ inference.py imports work')
-except ImportError as e:
-    print(f'⚠ Inference import issue: {e}')
-    
-# Test core dependencies
-try:
-    import torch
-    print(f'✅ torch {torch.__version__}')
-except ImportError as e:
-    print(f'❌ torch failed: {e}')
-    
-try:
-    import kaolin
-    print(f'✅ kaolin loaded')
-except ImportError:
-    try:
-        import kaolin_metrics
-        print('✅ kaolin-metrics loaded (alternative)')
-    except ImportError as e:
-        print(f'⚠ kaolin issue: {e}')
-        
-try:
-    import gradio
-    print(f'✅ gradio {gradio.__version__}')
-except ImportError as e:
-    print(f'❌ gradio failed: {e}')
-    
-print('\\n✓ Environment setup complete')
-print('Note: Demo will fail without checkpoints in checkpoints/hf/')
-"
+          python3.10 -c "import sys; sys.path.append('notebook'); \
+          try: \
+            from inference import Inference; \
+            print('✅ inference.py imports work'); \
+          except ImportError as e: \
+            print(f'⚠ Inference import: {e}'); \
+          try: \
+            import torch; \
+            print(f'✅ torch {torch.__version__}'); \
+          except ImportError as e: \
+            print(f'❌ torch: {e}'); \
+          try: \
+            import kaolin_metrics; \
+            print('✅ kaolin-metrics loaded'); \
+          except ImportError: \
+            try: \
+              import kaolin; \
+              print('✅ kaolin loaded'); \
+            except ImportError as e: \
+              print(f'⚠ kaolin: {e}'); \
+          try: \
+            import gradio; \
+            print(f'✅ gradio {gradio.__version__}'); \
+          except ImportError as e: \
+            print(f'❌ gradio: {e}'); \
+          print('\\n✓ Environment setup complete');"
           
-      - name: Run demo attempt
+      - name: Run demo
         script: |
-          echo "=== Attempting demo (will fail without checkpoints) ==="
+          echo "=== Running demo ==="
           export CUDA_HOME="/opt/homebrew"
-          python3.10 demo.py 2>&1 | head -50 || echo "Demo failed (expected without checkpoints)"
+          python3.10 demo.py || echo "Note: Demo expected to fail without checkpoints"
 
     artifacts:
       - "**/*.log"
