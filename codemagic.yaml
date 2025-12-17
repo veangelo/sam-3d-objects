@@ -6,31 +6,49 @@ workflows:
     scripts:
       - name: Install system dependencies
         script: |
-          # Install build tools gsplat might need
           brew install cmake ninja
           
-      - name: Install PyTorch FIRST
+      - name: Setup Python 3.10 (REQUIRED for kaolin)
         script: |
-          python3 --version
-          pip3 install --upgrade pip
-          pip3 install torch torchvision numpy
-          python3 -c "import torch; print(f'✓ PyTorch {torch.__version__} ready')"
-
+          echo "Installing Python 3.10..."
+          brew install python@3.10
+          python3.10 --version
+          pip3.10 install --upgrade pip
+          
+      - name: Install PyTorch for Python 3.10
+        script: |
+          echo "Installing PyTorch for Python 3.10..."
+          pip3.10 install torch torchvision numpy
+          python3.10 -c "import torch; print(f'✓ PyTorch {torch.__version__} ready')"
+          
       - name: Install gsplat manually
         script: |
-          echo "Cloning and installing gsplat manually..."
+          echo "Installing gsplat for Python 3.10..."
           git clone https://github.com/nerfstudio-project/gsplat.git
           cd gsplat
           git checkout 2323de5905d5e90e035f792fe65bad0fedd413e7
-          pip3 install -e .
+          pip3.10 install -e .
           cd ..
-
-      - name: Install remaining dependencies
+          
+      - name: Install kaolin and other deps
         script: |
-          echo "Installing other requirements..."
-          # Remove gsplat from requirements file temporarily
-          grep -v "gsplat" requirements.inference.txt > temp_reqs.txt
-          pip3 install -r temp_reqs.txt
-          pip3 install kaolin==0.17.0 seaborn==0.13.2 gradio==5.49.0
+          echo "Installing kaolin 0.17.0 (requires Python 3.10)..."
+          pip3.10 install kaolin==0.17.0
+          pip3.10 install seaborn==0.13.2 gradio==5.49.0
+          
+      - name: Run the demo
+        script: |
+          echo "=== Starting SAM 3D Demo with Python 3.10 ==="
+          python3.10 demo.py
+          
+          if [ -f "splat.ply" ]; then
+            echo "✅ DEMO SUCCESS: splat.ply created!"
+            ls -lh splat.ply
+          else
+            echo "❌ DEMO FAILED: No splat.ply output"
+            echo "Check above for Python errors"
+            exit 1
+          fi
 
-    # ... rest of the YAML remains the same
+    artifacts:
+      - "splat.ply"
