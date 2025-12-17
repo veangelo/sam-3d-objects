@@ -8,7 +8,7 @@ workflows:
         script: |
           brew install cmake ninja wget
           
-      - name: Setup Python 3.9 (kaolin 0.17.0 requires Python ≤3.9)
+      - name: Setup Python 3.9
         script: |
           echo "Installing Python 3.9 for kaolin compatibility..."
           brew install python@3.9
@@ -17,7 +17,6 @@ workflows:
           
       - name: Install PyTorch for Python 3.9
         script: |
-          # Install compatible PyTorch version
           pip3.9 install torch==2.0.1 torchvision==0.15.2 numpy
           python3.9 -c "import torch; print(f'✓ PyTorch {torch.__version__} ready')"
           
@@ -41,36 +40,30 @@ workflows:
       - name: Fix inference.py environment issue
         script: |
           echo "Fixing CUDA_HOME in inference.py..."
-          # Backup original
           cp notebook/inference.py notebook/inference.py.backup
-          # Fix the line
           sed -i '' "s/os.environ\[\"CUDA_HOME\"\] = os.environ\[\"CONDA_PREFIX\"\]/os.environ\[\"CUDA_HOME\"\] = '\/opt\/homebrew'/" notebook/inference.py
           
       - name: Test imports
         script: |
-          echo "=== Testing imports ==="
-          python3.9 -c "
-import sys
-sys.path.append('notebook')
-try:
-    from inference import Inference, load_image, load_single_mask
-    print('✅ inference.py imports successful')
-    import kaolin
-    print(f'✅ kaolin {kaolin.__version__} loaded')
-    import torch
-    print(f'✅ torch {torch.__version__} loaded')
-    print('\\n✓ All dependencies installed successfully!')
-except Exception as e:
-    print(f'❌ Import error: {e}')
-    import traceback
-    traceback.print_exc()
-"
+          python3.9 -c "import sys; sys.path.append('notebook'); \
+          try: \
+            from inference import Inference, load_image, load_single_mask; \
+            print('✅ inference.py imports successful'); \
+            import kaolin; \
+            print(f'✅ kaolin {kaolin.__version__} loaded'); \
+            import torch; \
+            print(f'✅ torch {torch.__version__} loaded'); \
+            print('✓ All dependencies installed successfully!'); \
+          except Exception as e: \
+            print(f'❌ Import error: {e}'); \
+            import traceback; \
+            traceback.print_exc()"
           
-      - name: Run the demo (will fail without checkpoints)
+      - name: Run the demo
         script: |
-          echo "=== Running demo.py (will fail without checkpoints) ==="
+          echo "=== Running demo.py ==="
           export CUDA_HOME="/opt/homebrew"
-          python3.9 demo.py || echo "Demo failed (expected without checkpoints)"
+          python3.9 demo.py || echo "Note: Demo expected to fail without checkpoints"
 
     artifacts:
       - "**/*.log"
