@@ -1,27 +1,15 @@
 workflows:
   sam3d-demo:
     name: SAM 3D Demo
-    environment:
-      # Choose ONE of these options:
-      # For macOS:
-      macos:
-        xcode: latest
-      # OR for Linux:
-      # linux:
-      #   flavor: ubuntu2004
-      
+    # Correct environment structure
+    instance_type: mac_mini_m1  # or 'linux_x2' for Linux
+    
     scripts:
       - name: Install dependencies
         script: |
-          # macOS uses brew, Linux uses apt
-          if [[ "$CM_OS" == "macos" ]]; then
-            brew install python@3.11
-            pip3 install --upgrade pip
-          else
-            sudo apt-get update
-            sudo apt-get install -y python3-pip python3-dev libgl1-mesa-glx
-          fi
-          
+          # Install Python and dependencies
+          python3 --version
+          pip3 install --upgrade pip
           pip3 install -r requirements.inference.txt
 
       - name: Verify critical files
@@ -30,7 +18,6 @@ workflows:
           ls -la
           [ -f "demo.py" ] && echo "✓ demo.py found" || (echo "✗ demo.py missing"; exit 1)
           [ -d "notebook" ] && echo "✓ notebook/ found" || echo "⚠ notebook/ missing"
-          [ -f "checkpoints/hf/pipeline.yaml" ] && echo "✓ Checkpoint config found" || echo "⚠ Checkpoint config missing - model will fail"
 
       - name: Run the demo
         script: |
@@ -42,18 +29,8 @@ workflows:
             ls -lh splat.ply
           else
             echo "❌ DEMO FAILED: No splat.ply output"
-            echo "Check above for Python errors"
             exit 1
           fi
 
     artifacts:
       - "splat.ply"
-      - "build_logs.txt"
-      
-    publishing:
-      email:
-        recipients:
-          - your-email@example.com
-        notify:
-          success: true
-          failure: true
