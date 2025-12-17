@@ -2,13 +2,26 @@ workflows:
   sam3d-demo:
     name: SAM 3D Demo
     environment:
-      os: linux
+      # Choose ONE of these options:
+      # For macOS:
+      macos:
+        xcode: latest
+      # OR for Linux:
+      # linux:
+      #   flavor: ubuntu2004
+      
     scripts:
       - name: Install dependencies
         script: |
-          sudo apt-get update
-          sudo apt-get install -y python3-pip python3-dev libgl1-mesa-glx
-          pip3 install --upgrade pip
+          # macOS uses brew, Linux uses apt
+          if [[ "$CM_OS" == "macos" ]]; then
+            brew install python@3.11
+            pip3 install --upgrade pip
+          else
+            sudo apt-get update
+            sudo apt-get install -y python3-pip python3-dev libgl1-mesa-glx
+          fi
+          
           pip3 install -r requirements.inference.txt
 
       - name: Verify critical files
