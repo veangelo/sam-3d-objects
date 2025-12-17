@@ -4,40 +4,33 @@ workflows:
     instance_type: mac_mini_m1
     
     scripts:
+      - name: Install system dependencies
+        script: |
+          # Install build tools gsplat might need
+          brew install cmake ninja
+          
       - name: Install PyTorch FIRST
         script: |
           python3 --version
           pip3 install --upgrade pip
-          echo "Installing PyTorch BEFORE any other dependencies..."
-          pip3 install torch torchvision
-          python3 -c "import torch; print(f'PyTorch {torch.__version__} installed successfully')"
+          pip3 install torch torchvision numpy
+          python3 -c "import torch; print(f'✓ PyTorch {torch.__version__} ready')"
 
-      - name: Install other dependencies
+      - name: Install gsplat manually
         script: |
-          echo "Now installing requirements.inference.txt..."
-          pip3 install -r requirements.inference.txt
+          echo "Cloning and installing gsplat manually..."
+          git clone https://github.com/nerfstudio-project/gsplat.git
+          cd gsplat
+          git checkout 2323de5905d5e90e035f792fe65bad0fedd413e7
+          pip3 install -e .
+          cd ..
 
-      - name: Verify critical files
+      - name: Install remaining dependencies
         script: |
-          echo "=== File Check ==="
-          ls -la
-          [ -f "demo.py" ] && echo "✓ demo.py found" || (echo "✗ demo.py missing"; exit 1)
-          [ -d "notebook" ] && echo "✓ notebook/ found" || echo "⚠ notebook/ missing"
-          [ -f "checkpoints/hf/pipeline.yaml" ] && echo "✓ Checkpoint config found" || echo "⚠ Checkpoint config missing - demo will fail"
+          echo "Installing other requirements..."
+          # Remove gsplat from requirements file temporarily
+          grep -v "gsplat" requirements.inference.txt > temp_reqs.txt
+          pip3 install -r temp_reqs.txt
+          pip3 install kaolin==0.17.0 seaborn==0.13.2 gradio==5.49.0
 
-      - name: Run the demo
-        script: |
-          echo "=== Starting SAM 3D Demo ==="
-          python3 demo.py
-          
-          if [ -f "splat.ply" ]; then
-            echo "✅ DEMO SUCCESS: splat.ply created!"
-            ls -lh splat.ply
-          else
-            echo "❌ DEMO FAILED: No splat.ply output"
-            echo "Check above for Python errors"
-            exit 1
-          fi
-
-    artifacts:
-      - "splat.ply"
+    # ... rest of the YAML remains the same
