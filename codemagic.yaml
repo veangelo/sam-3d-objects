@@ -28,10 +28,28 @@ workflows:
           pip3.10 install -e .
           cd ..
           
-      - name: Install kaolin
+      - name: Install kaolin (try multiple methods)
         script: |
-          echo "Installing kaolin..."
-          pip3.10 install kaolin-metrics
+          echo "Trying to install kaolin..."
+          # Method 1: Try pip install
+          pip3.10 install kaolin || echo "Standard kaolin install failed"
+          
+          # Method 2: Try from source if needed
+          if ! python3.10 -c "import kaolin" 2>/dev/null; then
+            echo "Installing kaolin from source..."
+            pip3.10 install "git+https://github.com/NVIDIAGameWorks/kaolin.git@v0.15.0"
+          fi
+          
+          # Method 3: Check if it's available as kaolinlib
+          if ! python3.10 -c "import kaolin" 2>/dev/null; then
+            echo "Trying kaolinlib..."
+            pip3.10 install kaolinlib || echo "kaolinlib also not available"
+          fi
+          
+          # Final check
+          python3.10 -c "import sys; sys.stdout.write('Kaolin check: '); \
+            try: import kaolin; print('SUCCESS'); \
+            except: print('FAILED (but continuing)')"
           
       - name: Install other dependencies
         script: |
@@ -47,31 +65,15 @@ workflows:
       - name: Test environment
         script: |
           python3.10 -c "import sys; sys.path.append('notebook'); \
-          try: \
-            from inference import Inference; \
-            print('✅ inference.py imports work'); \
-          except ImportError as e: \
-            print(f'⚠ Inference import: {e}'); \
-          try: \
-            import torch; \
-            print(f'✅ torch {torch.__version__}'); \
-          except ImportError as e: \
-            print(f'❌ torch: {e}'); \
-          try: \
-            import kaolin_metrics; \
-            print('✅ kaolin-metrics loaded'); \
-          except ImportError: \
-            try: \
-              import kaolin; \
-              print('✅ kaolin loaded'); \
-            except ImportError as e: \
-              print(f'⚠ kaolin: {e}'); \
-          try: \
-            import gradio; \
-            print(f'✅ gradio {gradio.__version__}'); \
-          except ImportError as e: \
-            print(f'❌ gradio: {e}'); \
-          print('\\n✓ Environment setup complete');"
+          try: from inference import Inference; print('✅ inference.py imports work'); \
+          except ImportError as e: print(f'⚠ Inference import: {e}'); \
+          try: import torch; print(f'✅ torch {torch.__version__}'); \
+          except ImportError as e: print(f'❌ torch: {e}'); \
+          try: import kaolin; print('✅ kaolin loaded'); \
+          except ImportError as e: print(f'⚠ kaolin: {e} (may not be critical)'); \
+          try: import gradio; print(f'✅ gradio {gradio.__version__}'); \
+          except ImportError as e: print(f'❌ gradio: {e}'); \
+          print('\\n✓ Environment setup attempt complete');"
           
       - name: Run demo
         script: |
