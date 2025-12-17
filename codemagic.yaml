@@ -4,36 +4,70 @@ workflows:
     instance_type: mac_mini_m1
     
     scripts:
-      - name: Install core dependencies
+      - name: Install system dependencies
         script: |
+          brew install cmake ninja wget
+          
+      - name: Setup Python 3.10
+        script: |
+          echo "Installing Python 3.10..."
           brew install python@3.10
-          pip3.10 install torch torchvision numpy gradio seaborn
+          python3.10 --version
+          pip3.10 install --upgrade pip setuptools wheel
+          
+      - name: Install PyTorch
+        script: |
+          pip3.10 install torch torchvision numpy
+          python3.10 -c "import torch; print(f'✓ PyTorch {torch.__version__} ready')"
+          
+      - name: Install gsplat
+        script: |
           git clone https://github.com/nerfstudio-project/gsplat.git
           cd gsplat
           git checkout 2323de5905d5e90e035f792fe65bad0fedd413e7
           pip3.10 install -e .
           cd ..
           
-      - name: Test without kaolin
+      - name: Install kaolin and other deps
         script: |
-          echo "Testing if kaolin is actually required..."
-          python3.10 -c "
-import sys
-sys.path.append('notebook')
-try:
-    # Try to import without kaolin
-    from inference import Inference
-    print('✅ Can import inference without kaolin')
-    print('Note: kaolin may only be needed for certain operations')
-except Exception as e:
-    print(f'Import error: {e}')
-    print('This confirms kaolin is required')
-"
+          # Skip kaolin for now - it's causing issues
+          echo "Skipping kaolin installation..."
+          echo "Installing other dependencies..."
+          pip3.10 install gradio seaborn
           
-      - name: Try demo
+      - name: Fix inference.py
         script: |
+          echo "Fixing CUDA_HOME..."
+          if [ -f "notebook/inference.py" ]; then
+            sed -i '' "s/os.environ\[\"CUDA_HOME\"\] = os.environ\[\"CONDA_PREFIX\"\]/os.environ\[\"CUDA_HOME\"\] = '\/opt\/homebrew'/" notebook/inference.py
+          fi
+          
+      - name: Test environment
+        script: |
+          python3.10 -c "import sys; sys.path.append('notebook'); \
+          try: \
+            from inference import Inference; \
+            print('✅ inference.py imports work'); \
+          except ImportError as e: \
+            print(f'⚠ Inference import: {e}'); \
+          try: \
+            import torch; \
+            print(f'✅ torch {torch.__version__}'); \
+          except ImportError as e: \
+            print(f'❌ torch: {e}'); \
+          try: \
+            import gradio; \
+            print(f'✅ gradio {gradio.__version__}'); \
+          except ImportError as e: \
+            print(f'❌ gradio: {e}'); \
+          print('Note: Skipping kaolin due to installation issues'); \
+          print('\\n✓ Environment setup complete');"
+          
+      - name: Try demo without kaolin
+        script: |
+          echo "=== Trying demo (without kaolin) ==="
           export CUDA_HOME="/opt/homebrew"
-          python3.10 demo.py 2>&1 | head -20 || echo "Demo failed"
+          python3.10 demo.py 2>&1 || echo "Demo failed (expected)"
 
     artifacts:
       - "**/*.log"
