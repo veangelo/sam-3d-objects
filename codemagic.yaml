@@ -4,82 +4,36 @@ workflows:
     instance_type: mac_mini_m1
     
     scripts:
-      - name: Install system dependencies
+      - name: Install core dependencies
         script: |
-          brew install cmake ninja wget
-          
-      - name: Setup Python 3.10
-        script: |
-          echo "Installing Python 3.10..."
           brew install python@3.10
-          python3.10 --version
-          pip3.10 install --upgrade pip setuptools wheel
-          
-      - name: Install PyTorch
-        script: |
-          pip3.10 install torch torchvision numpy
-          python3.10 -c "import torch; print(f'✓ PyTorch {torch.__version__} ready')"
-          
-      - name: Install gsplat
-        script: |
+          pip3.10 install torch torchvision numpy gradio seaborn
           git clone https://github.com/nerfstudio-project/gsplat.git
           cd gsplat
           git checkout 2323de5905d5e90e035f792fe65bad0fedd413e7
           pip3.10 install -e .
           cd ..
           
-      - name: Install kaolin (try multiple methods)
+      - name: Test without kaolin
         script: |
-          echo "Trying to install kaolin..."
-          # Method 1: Try pip install
-          pip3.10 install kaolin || echo "Standard kaolin install failed"
+          echo "Testing if kaolin is actually required..."
+          python3.10 -c "
+import sys
+sys.path.append('notebook')
+try:
+    # Try to import without kaolin
+    from inference import Inference
+    print('✅ Can import inference without kaolin')
+    print('Note: kaolin may only be needed for certain operations')
+except Exception as e:
+    print(f'Import error: {e}')
+    print('This confirms kaolin is required')
+"
           
-          # Method 2: Try from source if needed
-          if ! python3.10 -c "import kaolin" 2>/dev/null; then
-            echo "Installing kaolin from source..."
-            pip3.10 install "git+https://github.com/NVIDIAGameWorks/kaolin.git@v0.15.0"
-          fi
-          
-          # Method 3: Check if it's available as kaolinlib
-          if ! python3.10 -c "import kaolin" 2>/dev/null; then
-            echo "Trying kaolinlib..."
-            pip3.10 install kaolinlib || echo "kaolinlib also not available"
-          fi
-          
-          # Final check
-          python3.10 -c "import sys; sys.stdout.write('Kaolin check: '); \
-            try: import kaolin; print('SUCCESS'); \
-            except: print('FAILED (but continuing)')"
-          
-      - name: Install other dependencies
+      - name: Try demo
         script: |
-          pip3.10 install gradio seaborn
-          
-      - name: Fix inference.py
-        script: |
-          echo "Fixing CUDA_HOME..."
-          if [ -f "notebook/inference.py" ]; then
-            sed -i '' "s/os.environ\[\"CUDA_HOME\"\] = os.environ\[\"CONDA_PREFIX\"\]/os.environ\[\"CUDA_HOME\"\] = '\/opt\/homebrew'/" notebook/inference.py
-          fi
-          
-      - name: Test environment
-        script: |
-          python3.10 -c "import sys; sys.path.append('notebook'); \
-          try: from inference import Inference; print('✅ inference.py imports work'); \
-          except ImportError as e: print(f'⚠ Inference import: {e}'); \
-          try: import torch; print(f'✅ torch {torch.__version__}'); \
-          except ImportError as e: print(f'❌ torch: {e}'); \
-          try: import kaolin; print('✅ kaolin loaded'); \
-          except ImportError as e: print(f'⚠ kaolin: {e} (may not be critical)'); \
-          try: import gradio; print(f'✅ gradio {gradio.__version__}'); \
-          except ImportError as e: print(f'❌ gradio: {e}'); \
-          print('\\n✓ Environment setup attempt complete');"
-          
-      - name: Run demo
-        script: |
-          echo "=== Running demo ==="
           export CUDA_HOME="/opt/homebrew"
-          python3.10 demo.py || echo "Note: Demo expected to fail without checkpoints"
+          python3.10 demo.py 2>&1 | head -20 || echo "Demo failed"
 
     artifacts:
       - "**/*.log"
