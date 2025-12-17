@@ -1,14 +1,129 @@
+# codemagic.yaml - For SAM 3D Objects Inference Demo
 workflows:
-  build-mac: # or build-ios
-    # ... (environment setup, scripts)
+  run-sam3d-demo:
+    name: Run SAM 3D Objects Demo
+    environment:
+      os: linux  # Linux is better for Python ML projects
+      # You need CUDA for GPU acceleration (optional but recommended)
+      # Uncomment the next line if you have Codemagic GPU access
+      # instance_type: mac_mini_m1  # or 'linux_x2' for GPU
+      
     scripts:
-      # The command that builds your app
-      - flutter build ipa # for iOS
-      # or: flutter build macos # for macOS
-      # or: xcodebuild ... # for native projects
+      - name: Install system dependencies
+        script: |
+          # Update package list and install essential build tools
+          sudo apt-get update
+          sudo apt-get install -y python3-pip python3-dev build-essential
+          sudo apt-get install -y libgl1-mesa-glx libglib2.0-0  # For OpenCV/image processing
+          
+      - name: Set up Python environment
+        script: |
+          python3 --version
+          pip3 install --upgrade pip setuptools wheel
+          
+      - name: Install project dependencies
+        script: |
+          # Install inference requirements first (includes kaolin and gsplat)
+          echo "Installing inference requirements..."
+          pip3 install -r requirements.inference.txt
+          
+          # Install other requirements
+          if [ -f "requirements.txt" ]; then
+            pip3 install -r requirements.txt
+          fi
+          
+          # Install dev requirements if needed
+          if [ -f "requirements.dev.txt" ]; then
+            pip3 install -r requirements.dev.txt
+          fi
+          
+          # List installed packages for verification
+          pip3 list | grep -E "(torch|kaolin|gradio|numpy|opencv)"
+          
+      - name: Download model checkpoints (CRITICAL STEP)
+        script: |
+          echo "Checking for checkpoints..."
+          
+          # Create checkpoints directory if it doesn't exist
+          mkdir -p checkpoints
+          
+          # Check if checkpoints already exist
+          if [ ! -f "checkpoints/hf/pipeline.yaml" ]; then
+            echo "WARNING: Checkpoints not found!"
+            echo "The demo requires model checkpoints in checkpoints/hf/"
+            echo "Please download them from: https://github.com/veangelo/sam-3d-objects"
+            echo "or follow instructions in README.md"
+            echo "For now, creating placeholder structure..."
+            mkdir -p checkpoints/hf
+            touch checkpoints/hf/pipeline.yaml
+          else
+            echo "Checkpoints found!"
+            ls -la checkpoints/hf/
+          fi
+          
+      - name: Check for demo data
+        script: |
+          echo "Checking for demo images..."
+          if [ -d "notebook/images" ]; then
+            echo "Image directory exists:"
+            ls -la notebook/images/
+          else
+            echo "WARNING: Demo images not found in notebook/images/"
+            echo "The demo requires specific image files to run."
+          fi
+          
+      - name: Run the SAM 3D demo
+        script: |
+          echo "Attempting to run SAM 3D Objects demo..."
+          echo "Current directory:"
+          pwd
+          echo "Directory contents:"
+          ls -la
+          
+          # Try to run demo.py
+          if [ -f "demo.py" ]; then
+            # First check if we can import the modules
+            echo "Testing imports..."
+            python3 -c "
+import sys
+sys.path.append('notebook')
+try:
+    from inference import Inference, load_image, load_single_mask
+    print('✓ Successfully imported inference module')
+except Exception as e:
+    print(f'✗ Import failed: {e}')
+    print('Full error traceback:')
+    import traceback
+    traceback.print_exc()
+"
+            
+            # Now run the full demo
+            echo "Running demo.py..."
+            python3 demo.py
+            
+            # Check if output was created
+            if [ -f "splat.ply" ]; then
+              echo "✓ SUCCESS: splat.ply created!"
+              ls -la splat.ply
+            else
+              echo "✗ splat.ply was not created"
+            fi
+          else
+            echo "ERROR: demo.py not found!"
+            exit 1
+          fi
+    
     artifacts:
-      # ✅ CRITICAL: You MUST specify the path to your output file.
-      # Common paths (check your project's actual output location):
-      - build/ios/ipa/*.ipa                # Flutter iOS
-      - build/macos/Build/Products/Release/*.app # Flutter macOS
-      - ./output/**/*.ipa                  # Generic iOS path
+      # Collect the output 3D file
+      - "splat.ply"
+      # Collect any logs or output files
+      - "**/*.log"
+      - "**/*.txt"
+      
+    publishing:
+      email:
+        recipients:
+          - your-email@example.com  # Replace with your email
+        notify:
+          success: true
+          failure: true
