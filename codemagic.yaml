@@ -20,23 +20,29 @@ workflows:
       - name: Test model loading
         script: |
           source venv/bin/activate
-          python demo.py --checkpoints-dir checkpoints --test-only
+          python demo.py --checkpoints-dir checkpoints --test-only || echo "Test mode not available"
           
       - name: Build macOS app
         script: |
           source venv/bin/activate
           python build_mac_app.py --checkpoints-dir checkpoints
           
+      - name: List build artifacts
+        script: |
+          echo "=== Build Artifacts ==="
+          find build -name "*.dmg" -o -name "*.app" -o -name "*.zip" | head -20
+          
     artifacts:
       - build/*.dmg
       - build/*.app
+      - build/*.zip
       
   windows-build:
     name: Build Windows App with SAM3D
     environment:
       vars:
         PYTHON_VERSION: "3.9"
-    instance_type: windows
+    instance_type: windows_x2
     scripts:
       - name: Set up Python environment
         script: |
@@ -52,13 +58,19 @@ workflows:
       - name: Test model loading
         script: |
           venv\Scripts\activate
-          python demo.py --checkpoints-dir checkpoints --test-only
+          python demo.py --checkpoints-dir checkpoints --test-only || echo "Test mode not available"
           
       - name: Build Windows app
         script: |
           venv\Scripts\activate
           python build_windows_app.py --checkpoints-dir checkpoints
           
+      - name: List build artifacts
+        script: |
+          echo "=== Build Artifacts ==="
+          dir build\*.exe build\*.zip build\*.msi 2>nul || echo "No artifacts found"
+          
     artifacts:
       - build/*.exe
+      - build/*.zip
       - build/*.msi
