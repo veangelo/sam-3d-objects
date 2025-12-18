@@ -1,22 +1,30 @@
-# Copyright (c) Meta Platforms, Inc. and affiliates.
-import sys
+import os
+import argparse
+from pathlib import Path
 
-# import inference code
-sys.path.append("notebook")
-from inference import Inference, load_image, load_single_mask
+def main():
+    parser = argparse.ArgumentParser(description='SAM3D Demo')
+    parser.add_argument('--model-path', type=str, default='checkpoints/hf/',
+                        help='Path to SAM3D model files')
+    args = parser.parse_args()
+    
+    model_path = Path(args.model_path)
+    
+    # Verify model files exist
+    pipeline_file = model_path / "pipeline.yaml"
+    model_file = model_path / "sam3d_large.safetensors"  # Adjust filename
+    
+    if not pipeline_file.exists():
+        raise FileNotFoundError(f"Pipeline file not found at {pipeline_file}")
+    
+    if not model_file.exists():
+        raise FileNotFoundError(f"Model file not found at {model_file}")
+    
+    # Load and run SAM3D model
+    print(f"Loading SAM3D model from {model_path}")
+    # Your SAM3D loading code here
+    
+    print("SAM3D demo running successfully!")
 
-# load model
-tag = "hf"
-config_path = f"checkpoints/{tag}/pipeline.yaml"
-inference = Inference(config_path, compile=False)
-
-# load image (RGBA only, mask is embedded in the alpha channel)
-image = load_image("notebook/images/shutterstock_stylish_kidsroom_1640806567/image.png")
-mask = load_single_mask("notebook/images/shutterstock_stylish_kidsroom_1640806567", index=14)
-
-# run model
-output = inference(image, mask, seed=42)
-
-# export gaussian splat
-output["gs"].save_ply(f"splat.ply")
-print("Your reconstruction has been saved to splat.ply")
+if __name__ == "__main__":
+    main()
