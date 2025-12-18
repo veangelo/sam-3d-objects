@@ -1,76 +1,19 @@
 workflows:
-  macos-build:
-    name: Build macOS App with SAM3D
-    environment:
-      vars:
-        PYTHON_VERSION: "3.9"
+  sam3d-demo:
+    name: SAM3D Demo
     instance_type: mac_mini_m1
     scripts:
-      - name: Set up Python environment
+      - name: List files
         script: |
-          python3 -m venv venv
-          source venv/bin/activate
-          pip install -r requirements.txt
-          
-      - name: Verify checkpoints
+          echo "=== Repository Contents ==="
+          ls -la
+          echo "=== Checkpoints ==="
+          ls -la checkpoints/ || echo "No checkpoints"
+      - name: Install deps
         script: |
-          source venv/bin/activate
-          python verify_checkpoints.py --checkpoints-dir checkpoints
-          
-      - name: Test model loading
+          pip install torch numpy
+      - name: Test app
         script: |
-          source venv/bin/activate
-          python demo.py --checkpoints-dir checkpoints --test-only || echo "Test mode not available"
-          
-      - name: Build macOS app
-        script: |
-          source venv/bin/activate
-          python build_mac_app.py --checkpoints-dir checkpoints
-          
-      - name: List build artifacts
-        script: |
-          echo "=== Build Artifacts ==="
-          find build -name "*.dmg" -o -name "*.app" -o -name "*.zip" | head -20
-          
+          python demo.py --checkpoints-dir checkpoints --test-only
     artifacts:
-      - build/*.dmg
-      - build/*.app
-      - build/*.zip
-      
-  windows-build:
-    name: Build Windows App with SAM3D
-    environment:
-      vars:
-        PYTHON_VERSION: "3.9"
-    instance_type: windows_x2
-    scripts:
-      - name: Set up Python environment
-        script: |
-          python -m venv venv
-          venv\Scripts\activate
-          pip install -r requirements.txt
-          
-      - name: Verify checkpoints
-        script: |
-          venv\Scripts\activate
-          python verify_checkpoints.py --checkpoints-dir checkpoints
-          
-      - name: Test model loading
-        script: |
-          venv\Scripts\activate
-          python demo.py --checkpoints-dir checkpoints --test-only || echo "Test mode not available"
-          
-      - name: Build Windows app
-        script: |
-          venv\Scripts\activate
-          python build_windows_app.py --checkpoints-dir checkpoints
-          
-      - name: List build artifacts
-        script: |
-          echo "=== Build Artifacts ==="
-          dir build\*.exe build\*.zip build\*.msi 2>nul || echo "No artifacts found"
-          
-    artifacts:
-      - build/*.exe
-      - build/*.zip
-      - build/*.msi
+      - "*.txt"
